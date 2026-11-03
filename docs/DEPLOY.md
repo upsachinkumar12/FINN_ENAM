@@ -20,9 +20,11 @@ This writes `backend/seed/snapshot.json.gz` (prices, triaged filings with FINN's
 3. Set `ANTHROPIC_API_KEY` and `CORS_ORIGINS` (your Vercel URL) in the service's environment.
 4. Wait for `/api/health` to return `{"ok": true}`.
 
-Free Render instances sleep after inactivity; the first request after a sleep takes 30–60 s, and the app shows a "waking up" retry state. If Chroma plus the embedding model exceed the free memory limit, use any Docker host with ≥1 GB RAM (the same image runs unchanged, for example on Hugging Face Spaces or Fly.io).
+Free Render instances sleep after inactivity; the first request after a sleep takes 30–60 s, and the app shows a "waking up" retry state. Their disk is wiped on restart, so the app re-boots from the seed snapshot each time.
 
-**Check after deploying:** press refresh in the app. If BSE or Yahoo refuse the host's IP, the header and Feed say so, and the snapshot data stays visible with its original dates.
+**Memory.** Indexing a 300–400 page annual report with the local embedding model needs about 1 GB RAM and crashed the free 512 MB instance in testing. `render.yaml` therefore sets `VECTOR_SEARCH=false` (keyword retrieval only); with that setting a 414-page annual report indexes without trouble. On a host with ≥1 GB RAM, remove it to get hybrid retrieval back.
+
+**What was verified on Render (3 Nov 2026):** Yahoo prices refresh; BSE's API refuses the host (403) and the filing feed falls back to the screener.in index automatically; screener.in statements and BSE-hosted PDFs download; research indexing completes.
 
 ## 3. Web app on Vercel
 
@@ -39,4 +41,5 @@ Free Render instances sleep after inactivity; the first request after a sleep ta
 | `CORS_ORIGINS` | API | Comma-separated allowed web origins |
 | `AUTO_REFRESH_MINUTES` | API | Periodic refresh on hosts that stay awake; `0` = on demand |
 | `DATA_DIR` | API | SQLite, PDF cache and vector index location (`/data` in Docker) |
+| `VECTOR_SEARCH` | API | `false` on hosts under ~1 GB RAM: keyword retrieval only |
 | `VITE_API_URL` | Web | API base URL |

@@ -1,5 +1,7 @@
 # FINN — Financial Investment Agent
 
+**Live demo:** https://finn-enam-smoky.vercel.app (open on a phone; the API may take 30–60 s to wake on first visit)
+
 A mobile-first investment agent for an investor holding 20 NSE companies. FINN reads the exchange feed, prices and primary documents so the investor doesn't have to, and shows only what matters, with the source one tap away.
 
 - **Push:** a daily brief you can finish, ranked filing digest, configurable price/volume/filing alerts, results cards with QoQ/YoY, management-change bios from the filing itself.
@@ -48,6 +50,8 @@ cd backend && pytest -q
 ## Deploy
 
 See [docs/DEPLOY.md](docs/DEPLOY.md). Backend: Docker on Render (blueprint in `render.yaml`). Frontend: Vercel (`frontend/vercel.json`, set `VITE_API_URL`).
+
+The public demo runs **without a model API key**, so it shows everything except the AI readings, the Promise Ledger and the cited bull/bear case, which are labelled as switched off. Set `ANTHROPIC_API_KEY` on the API service to turn them on; no code change is needed.
 
 ## Docs
 
