@@ -9,9 +9,10 @@ services:
     healthCheckPath: /api/health
     envVars:
       - key: ANTHROPIC_API_KEY
-        sync: false            # set in the dashboard; never committed
+        sync: false            # optional; set in the dashboard to switch on AI features. Never committed
+      # Any https://*.vercel.app origin is allowed by default (CORS_ORIGIN_REGEX); add other origins here
       - key: CORS_ORIGINS
-        sync: false            # e.g. https://finn-yourname.vercel.app
+        value: http://localhost:5173
       - key: MODEL_CHEAP
         value: claude-haiku-5-5
       - key: MODEL_STRONG

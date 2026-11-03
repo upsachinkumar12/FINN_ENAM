@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     llm_enabled: bool = True
 
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+    # The API has no logins or cookies, so any Vercel deployment of the web app may call it
+    cors_origin_regex: str = r"https://[a-z0-9-]+\.vercel\.app"
 
     # Politeness towards public sources
     http_min_interval_s: float = 0.6
