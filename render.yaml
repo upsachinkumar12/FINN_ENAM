@@ -19,3 +19,5 @@ services:
         value: claude-sonnet-5-5
       - key: AUTO_REFRESH_MINUTES
         value: "0"             # free instances sleep; refresh runs on demand from the app
+      - key: VECTOR_SEARCH
+        value: "false"         # the free 512 MB instance can't hold the embedding model; keyword search only

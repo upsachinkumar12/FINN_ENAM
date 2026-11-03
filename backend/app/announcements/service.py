@@ -6,6 +6,7 @@ from app.announcements import bse
 from app.announcements.classify import triage
 from app.config import IST
 from app.database import db
+from app.sources import screener
 from app.utils.http import SourceError
 
 PRIORITY_ORDER = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
@@ -17,15 +18,23 @@ def ingest(symbol: str, days: int = 30) -> dict:
         db.log_fetch("bse", symbol, False, "No BSE code known for this company")
         return {"symbol": symbol, "ok": False, "error": "No BSE code known; filings unavailable from BSE"}
     to = datetime.now(IST).date()
+    via = "BSE"
     try:
-        raw = bse.fetch(company["bse_code"], to - timedelta(days=days), to)
+        filings = [bse.normalise(r, symbol, company.get("bse_url"))
+                   for r in bse.fetch(company["bse_code"], to - timedelta(days=days), to)]
     except SourceError as e:
-        db.log_fetch("bse", symbol, False, str(e))
-        return {"symbol": symbol, "ok": False, "error": str(e)}
+        # BSE's API refuses some cloud hosts. The same BSE filings are listed on screener.in.
+        try:
+            filings = [bse.from_index(i, symbol, company.get("bse_url")) for i in screener.recent_announcements(symbol)]
+            via = "screener.in index (BSE API refused this host)"
+        except SourceError as e2:
+            db.log_fetch("bse", symbol, False, f"{e}; fallback failed: {e2}")
+            return {"symbol": symbol, "ok": False, "error": str(e)}
 
     new = 0
-    for row in raw:
-        a = bse.normalise(row, symbol, company.get("bse_url"))
+    for a in filings:
+        if a["pdf_url"] and db.query_one("SELECT 1 FROM announcements WHERE pdf_url = ?", (a["pdf_url"],)):
+            continue  # same filing already ingested through the other adapter
         t = triage(a["bse_category"], a["bse_subcategory"], a["title"], a["critical"])
         inserted = db.execute(
             "INSERT OR IGNORE INTO announcements(id, symbol, title, detail, bse_category, bse_subcategory, "
@@ -41,8 +50,8 @@ def ingest(symbol: str, days: int = 30) -> dict:
         if inserted:
             new += 1
             alerts.raise_announcement_alert({**a, "category": t.category, "priority": t.priority})
-    db.log_fetch("bse", symbol, True, f"{len(raw)} filings in {days}d, {new} new")
-    return {"symbol": symbol, "ok": True, "fetched": len(raw), "new": new}
+    db.log_fetch("bse", symbol, True, f"{len(filings)} filings via {via}, {new} new")
+    return {"symbol": symbol, "ok": True, "fetched": len(filings), "new": new, "via": via}
 
 
 def _hydrate(r: dict) -> dict:
@@ -117,9 +126,12 @@ def digest(hours: float = 24, **filters) -> dict:
 
 
 def freshness() -> dict:
-    rows = db.query("SELECT key, fetched_at, ok, detail FROM fetch_log WHERE source = 'bse' ORDER BY fetched_at DESC")
+    rows = db.query("SELECT key, fetched_at, ok, detail, last_ok_at FROM fetch_log WHERE source = 'bse'")
+    oks = [r["last_ok_at"] for r in rows if r["last_ok_at"]]
     return {
-        "last_success": next((r["fetched_at"] for r in rows if r["ok"]), None),
+        "last_success": max(oks) if oks else None,
+        "via": next((r["detail"].split(" via ", 1)[1].split(",")[0] for r in sorted(rows, key=lambda r: r["fetched_at"],
+                     reverse=True) if r["ok"] and r["detail"] and " via " in r["detail"]), None),
         "failures": [r for r in rows if not r["ok"]],
     }
 

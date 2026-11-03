@@ -29,6 +29,33 @@ def fetch(bse_code: str, frm: date, to: date) -> list[dict]:
     return rows
 
 
+def from_index(item: dict, symbol: str, company_bse_url: str | None) -> dict:
+    """A filing found through screener.in's company page. BSE titles read '<regulation>-<subcategory>',
+    so the subcategory BSE's API would have given is recovered from the title."""
+    title = item["title"]
+    sub = None
+    if "(LODR)-" in title:
+        sub = title.split("(LODR)-", 1)[1].strip()
+    elif title.lower().startswith("board meeting outcome"):
+        sub = "Outcome of Board Meeting"
+    elif title.lower().startswith("board meeting intimation"):
+        sub = "Board Meeting"
+    attachment = item["pdf_url"].rsplit("Pname=", 1)[-1]
+    return {
+        "id": f"bse-att:{attachment}",
+        "symbol": symbol,
+        "title": title,
+        "detail": None,
+        "bse_category": None,
+        "bse_subcategory": sub,
+        "critical": False,
+        "published_at": datetime.fromisoformat(item["published_at"]).astimezone(IST).isoformat(),
+        "source": "BSE (via screener.in index)",
+        "filing_page_url": (company_bse_url.rstrip("/") + "/corp-announcements/") if company_bse_url else None,
+        "pdf_url": item["pdf_url"],
+    }
+
+
 def normalise(row: dict, symbol: str, company_bse_url: str | None) -> dict:
     ts = row.get("DissemDT") or row.get("NEWS_DT")
     published = datetime.fromisoformat(ts.split(".")[0]).replace(tzinfo=IST).isoformat()

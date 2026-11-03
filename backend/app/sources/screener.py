@@ -152,6 +152,23 @@ def fetch_company(symbol: str) -> dict:
     }
 
 
+def recent_announcements(symbol: str) -> list[dict]:
+    """The latest exchange filings as listed on the company page: BSE title, exact time and BSE PDF link.
+
+    Used only when BSE's own API refuses this host. Screener's one-line summary under each filing is its
+    own commentary, so it is deliberately not read.
+    """
+    soup = BeautifulSoup(_cached_get(_company_url(symbol, False), max_age_h=0.25), "lxml")
+    out = []
+    for li in soup.select("#company-announcements-tab li"):
+        a, t = li.select_one("a[href]"), li.select_one("time[datetime]")
+        if not a or not t:
+            continue
+        title = "".join(s for s in a.find_all(string=True, recursive=False)).strip()
+        out.append({"title": title, "published_at": t["datetime"], "pdf_url": a["href"]})
+    return out
+
+
 def _parse_documents(soup) -> dict:
     """Primary-document links only: annual reports and concall transcripts / decks."""
     annual_reports = []

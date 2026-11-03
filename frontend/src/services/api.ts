@@ -155,7 +155,7 @@ export interface Digest {
   must_read: Announcement[]
   worth_a_look: Announcement[]
   buried: Announcement[]
-  freshness: { last_success: string | null; failures: { key: string; detail: string }[] }
+  freshness: { last_success: string | null; via: string | null; failures: { key: string; detail: string }[] }
 }
 
 export interface Alert {

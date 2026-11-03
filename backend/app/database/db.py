@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS fetch_log (
     fetched_at TEXT NOT NULL,
     ok INTEGER NOT NULL,
     detail TEXT,
+    last_ok_at TEXT,
     PRIMARY KEY (source, key)
 );
 
@@ -204,8 +205,17 @@ def connect(path: Path | None = None) -> sqlite3.Connection:
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA foreign_keys=ON")
         conn.executescript(SCHEMA)
+        _migrate(conn)
         _conn = conn
     return _conn
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Additive column changes for databases created by earlier versions."""
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(fetch_log)")}
+    if "last_ok_at" not in cols:
+        conn.execute("ALTER TABLE fetch_log ADD COLUMN last_ok_at TEXT")
+        conn.execute("UPDATE fetch_log SET last_ok_at = fetched_at WHERE ok = 1")
 
 
 @contextmanager
@@ -251,11 +261,13 @@ def kv_set(key: str, value: Any) -> None:
 
 
 def log_fetch(source: str, key: str, ok: bool, detail: str | None = None) -> None:
+    """A failure never erases when the source last worked, so freshness labels stay truthful."""
+    t = now_iso()
     execute(
-        "INSERT INTO fetch_log(source, key, fetched_at, ok, detail) VALUES (?, ?, ?, ?, ?) "
-        "ON CONFLICT(source, key) DO UPDATE SET fetched_at = excluded.fetched_at, "
-        "ok = excluded.ok, detail = excluded.detail",
-        (source, key, now_iso(), int(ok), detail),
+        "INSERT INTO fetch_log(source, key, fetched_at, ok, detail, last_ok_at) VALUES (?, ?, ?, ?, ?, ?) "
+        "ON CONFLICT(source, key) DO UPDATE SET fetched_at = excluded.fetched_at, ok = excluded.ok, "
+        "detail = excluded.detail, last_ok_at = COALESCE(excluded.last_ok_at, fetch_log.last_ok_at)",
+        (source, key, t, int(ok), detail, t if ok else None),
     )
 
 

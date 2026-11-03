@@ -88,6 +88,7 @@ export function FeedPage() {
         <div className={digest.loading ? 'opacity-60 transition-opacity' : ''}>
           <p className="mt-3 text-xs text-ink-3">
             {d.counts.filings} filings · {d.counts.events} events · exchange feed checked {relTime(d.freshness.last_success)}
+            {d.freshness.via && d.freshness.via !== 'BSE' && ` via ${d.freshness.via}`}
             {d.freshness.failures.length > 0 && ` · ${d.freshness.failures.length} source error${d.freshness.failures.length > 1 ? 's' : ''}`}
           </p>
           {d.counts.filings === 0 && (

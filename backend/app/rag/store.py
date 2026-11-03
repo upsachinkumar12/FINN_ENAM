@@ -16,6 +16,8 @@ _vector_error: str | None = None
 def _vectors():
     """Chroma with its built-in local ONNX embedding model: no API key, no per-call cost."""
     global _collection, _vector_error
+    if not settings.vector_search:
+        _vector_error = "switched off on this host (VECTOR_SEARCH=false); keyword search only"
     if _collection is not None or _vector_error:
         return _collection
     with _lock:
@@ -42,8 +44,8 @@ def add_chunks(doc_id: str, symbol: str, chunks: list[tuple[int, str]]) -> int:
     col = _vectors()
     if col is not None and rows:
         try:
-            for i in range(0, len(rows), 256):
-                batch = rows[i:i + 256]
+            for i in range(0, len(rows), 64):  # small batches keep peak memory low
+                batch = rows[i:i + 64]
                 col.upsert(ids=[r[0] for r in batch], documents=[r[5] for r in batch],
                            metadatas=[{"doc_id": r[1], "symbol": r[2], "page": r[3]} for r in batch])
         except Exception as e:

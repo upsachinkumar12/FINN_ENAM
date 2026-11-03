@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     # Periodic refresh on hosts that stay awake; 0 disables it (refresh is then on demand)
     auto_refresh_minutes: int = 0
 
+    # Semantic (embedding) search alongside keyword search. The local embedding model needs ~1 GB RAM
+    # when indexing a large annual report; on smaller hosts set false and FINN uses keyword search only.
+    vector_search: bool = True
+
     @property
     def db_path(self) -> Path:
         return self.data_dir / "finn.sqlite3"
