@@ -25,3 +25,6 @@ playwright-report/
 # OS and editor
 .DS_Store
 Thumbs.db
+
+# Local submission files (attached to the email, not published)
+submission/
