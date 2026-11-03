@@ -1,0 +1,20 @@
+# Render blueprint for the FINN API. Create it from the Render dashboard ("New > Blueprint") after pushing the repo.
+services:
+  - type: web
+    name: finn-api
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false            # set in the dashboard; never committed
+      - key: CORS_ORIGINS
+        sync: false            # e.g. https://finn-yourname.vercel.app
+      - key: MODEL_CHEAP
+        value: claude-haiku-5-5
+      - key: MODEL_STRONG
+        value: claude-sonnet-5-5
+      - key: AUTO_REFRESH_MINUTES
+        value: "0"             # free instances sleep; refresh runs on demand from the app
